@@ -1,0 +1,24 @@
+# Personal Digital Archive
+
+A local, single-user archive for organizing and finding personal files. PostgreSQL stores metadata, extracted text, activity, and pgvector embeddings; files remain on the computer's disk. The application is designed to work offline after its dependencies and local OCR assets are installed.
+
+## Development setup
+
+Requirements: Node.js 20.9 or newer, Docker with Compose, and a local existing `Downloads` folder (or another chosen directory within your home/profile).
+
+1. Copy `.env.example` to `.env` and set a private local database password if desired.
+2. Start PostgreSQL with `docker compose up -d`.
+3. Install the JavaScript dependencies, then initialize the local database with `npm run db:setup`.
+4. Start the app with `npm run dev` and use the local API at `http://127.0.0.1:3000/api`.
+
+The default index root resolves to `Downloads` under the current operating-system home/profile. Set `ARCHIVE_ROOT` in `.env` to an existing directory within that profile to change it. Do not set it to a drive root or arbitrary path outside the profile. The initial database includes supported file-format lookup rows, but no fake archive items.
+
+During development, PostgreSQL data is persisted in a local host directory and files are read from the host filesystem. No file binaries are stored in the database container. Setup may need image/package downloads once; the running application itself makes no external network calls. The Next.js commands disable telemetry and bind the app to loopback. Import the local Postman collections in `postman/` to exercise the implemented APIs.
+
+## Current status
+
+The first backend checkpoint covers item browsing, detail, metadata/membership updates, collections, and tags. Ingest/extraction, search, embeddings, reports, activity history, scanning, and frontend pages remain future work.
+
+## Project guidance
+
+See `CODEX.md` for contribution workflow and `AGENTS.md` for repository context. Architecture decisions and implementation notes are in `docs/`.
