@@ -21,7 +21,8 @@
 ## Markdown and commit policy
 
 - `docs/PLAN.md` and `docs/DESIGN.md` are approved reference documents. Keep them in `docs/` and do not edit them further unless the user explicitly asks.
-- Commit only `README.md`, `AGENTS.md`, `docs/PLAN.md`, and `docs/DESIGN.md` from the Markdown files. Keep every other Markdown file untracked; this includes `CODEX.md`, `MY_NOTES.md`, and other Markdown notes under `docs/`.
+- Commit `README.md`, `AGENTS.md`, and every Markdown file in `docs/`; use uppercase names for files in `docs/`. Keep other Markdown files untracked, including root-level `CODEX.md` and `MY_NOTES.md`.
+- The user has also directed that `SRS_Personal_Digital_Archive.pdf` be committed.
 - Before committing, stage paths explicitly. Do not use a blanket `git add -A` because repository guidance and reference files must remain untracked.
 
 ## Local setup
