@@ -1,0 +1,75 @@
+{
+  "info": {
+    "name": "Personal Digital Archive - Exhaustive",
+    "description": "Happy paths, validation failures, conflicts, missing records, relationship updates, and cascade behavior for the first backend checkpoint. Requests target localhost only.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://127.0.0.1:3000/api" },
+    { "key": "itemId", "value": "" },
+    { "key": "missingId", "value": "2147483000" },
+    { "key": "rootId", "value": "" },
+    { "key": "childId", "value": "" },
+    { "key": "tagId", "value": "" },
+    { "key": "itemTitle", "value": "\"\"" },
+    { "key": "rootName", "value": "" },
+    { "key": "childName", "value": "" },
+    { "key": "tagName", "value": "" }
+  ],
+  "event": [
+    { "listen": "prerequest", "script": { "type": "text/javascript", "exec": [
+      "const run = Date.now().toString();",
+      "pm.collectionVariables.set('rootName', 'PDA Exhaustive Root ' + run);",
+      "pm.collectionVariables.set('childName', 'PDA Exhaustive Child ' + run);",
+      "pm.collectionVariables.set('tagName', 'pda-exhaustive-' + run);"
+    ] } }
+  ],
+  "item": [
+    {
+      "name": "Items",
+      "item": [
+        { "name": "List default page", "request": { "method": "GET", "url": "{{baseUrl}}/items" }, "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('200 list', () => { pm.response.to.have.status(200); const b = pm.response.json(); pm.expect(b.items).to.be.an('array'); pm.expect(b.total).to.be.a('number'); pm.collectionVariables.set('itemId', b.items.length ? b.items[0].itemId : ''); if (b.items.length) pm.collectionVariables.set('itemTitle', JSON.stringify(b.items[0].title)); });"] } }] },
+        { "name": "Filter and paginate", "request": { "method": "GET", "url": "{{baseUrl}}/items?q=notes&favorite=false&archived=false&limit=5&offset=0" }, "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('200 filtered list', () => { pm.response.to.have.status(200); pm.expect(pm.response.json().items.length).to.be.at.most(5); });"] } }] },
+        { "name": "Reject invalid limit", "request": { "method": "GET", "url": "{{baseUrl}}/items?limit=0" }, "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('400 invalid limit', () => { pm.response.to.have.status(400); pm.expect(pm.response.json().error.code).to.eql('VALIDATION_ERROR'); });"] } }] },
+        { "name": "Reject malformed boolean", "request": { "method": "GET", "url": "{{baseUrl}}/items?favorite=yes" }, "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('400 malformed boolean', () => pm.response.to.have.status(400));"] } }] },
+        { "name": "Reject reversed dates", "request": { "method": "GET", "url": "{{baseUrl}}/items?dateFrom=2026-05-01&dateTo=2026-04-01" }, "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('400 reversed date range', () => pm.response.to.have.status(400));"] } }] },
+        { "name": "Reject malformed date", "request": { "method": "GET", "url": "{{baseUrl}}/items?dateFrom=not-a-date" }, "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('400 malformed date', () => pm.response.to.have.status(400));"] } }] },
+        { "name": "Reject invalid item ID", "request": { "method": "GET", "url": "{{baseUrl}}/items/nope" }, "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('400 invalid item ID', () => pm.response.to.have.status(400));"] } }] },
+        { "name": "Return missing item", "request": { "method": "GET", "url": "{{baseUrl}}/items/{{missingId}}" }, "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('404 missing item', () => pm.response.to.have.status(404));"] } }] },
+        { "name": "Read item and log access", "request": { "method": "GET", "url": "{{baseUrl}}/items/{{itemId}}" }, "event": [{ "listen": "prerequest", "script": { "type": "text/javascript", "exec": ["if (!pm.collectionVariables.get('itemId')) pm.execution.skipRequest();"] } }, { "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('200 item detail', () => { pm.response.to.have.status(200); pm.expect(pm.response.json().chunks).to.be.an('array'); });"] } }] },
+        { "name": "Reject empty patch", "request": { "method": "PATCH", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{}" }, "url": "{{baseUrl}}/items/{{itemId}}" }, "event": [{ "listen": "prerequest", "script": { "type": "text/javascript", "exec": ["if (!pm.collectionVariables.get('itemId')) pm.execution.skipRequest();"] } }, { "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('400 empty patch', () => pm.response.to.have.status(400));"] } }] },
+        { "name": "Reject unknown item field", "request": { "method": "PATCH", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\"unexpected\":true}" }, "url": "{{baseUrl}}/items/{{itemId}}" }, "event": [{ "listen": "prerequest", "script": { "type": "text/javascript", "exec": ["if (!pm.collectionVariables.get('itemId')) pm.execution.skipRequest();"] } }, { "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('400 unknown field', () => pm.response.to.have.status(400));"] } }] },
+        { "name": "Reject invalid membership reference", "request": { "method": "PATCH", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\"collectionIds\":[{{missingId}}]}" }, "url": "{{baseUrl}}/items/{{itemId}}" }, "event": [{ "listen": "prerequest", "script": { "type": "text/javascript", "exec": ["if (!pm.collectionVariables.get('itemId')) pm.execution.skipRequest();"] } }, { "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('400 invalid membership', () => pm.response.to.have.status(400));"] } }] },
+        { "name": "Update item metadata", "request": { "method": "PATCH", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\"title\":{{itemTitle}}}" }, "url": "{{baseUrl}}/items/{{itemId}}" }, "event": [{ "listen": "prerequest", "script": { "type": "text/javascript", "exec": ["if (!pm.collectionVariables.get('itemId')) pm.execution.skipRequest();"] } }, { "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('200 metadata patch', () => { pm.response.to.have.status(200); pm.expect(pm.response.json().item.title).to.eql(JSON.parse(pm.collectionVariables.get('itemTitle'))); });"] } }] }
+      ]
+    },
+    {
+      "name": "Collections",
+      "item": [
+        { "name": "List flat collections", "request": { "method": "GET", "url": "{{baseUrl}}/collections" }, "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('200 flat collections', () => { pm.response.to.have.status(200); pm.expect(pm.response.json().collections).to.be.an('array'); });"] } }] },
+        { "name": "List collection tree", "request": { "method": "GET", "url": "{{baseUrl}}/collections?tree=true" }, "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('200 collection tree', () => pm.response.to.have.status(200));"] } }] },
+        { "name": "Reject empty collection name", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\"name\":\"  \"}" }, "url": "{{baseUrl}}/collections" }, "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('400 blank name', () => pm.response.to.have.status(400));"] } }] },
+        { "name": "Reject missing parent", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\"name\":\"PDA Invalid Parent\",\"parentId\":{{missingId}}}" }, "url": "{{baseUrl}}/collections" }, "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('400 missing parent', () => pm.response.to.have.status(400));"] } }] },
+        { "name": "Create root collection", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\"name\":\"{{rootName}}\"}" }, "url": "{{baseUrl}}/collections" }, "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('201 root collection', () => { pm.response.to.have.status(201); pm.collectionVariables.set('rootId', pm.response.json().collection.collectionId); });"] } }] },
+        { "name": "Reject sibling duplicate", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\"name\":\"{{rootName}}\"}" }, "url": "{{baseUrl}}/collections" }, "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('409 duplicate sibling', () => pm.response.to.have.status(409));"] } }] },
+        { "name": "Create child collection", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\"name\":\"{{childName}}\",\"parentId\":{{rootId}}}" }, "url": "{{baseUrl}}/collections" }, "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('201 child collection', () => { pm.response.to.have.status(201); pm.collectionVariables.set('childId', pm.response.json().collection.collectionId); });"] } }] },
+        { "name": "Reject empty collection patch", "request": { "method": "PATCH", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{}" }, "url": "{{baseUrl}}/collections/{{childId}}" }, "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('400 empty patch', () => pm.response.to.have.status(400));"] } }] },
+        { "name": "Reject collection cycle", "request": { "method": "PATCH", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\"parentId\":{{childId}}}" }, "url": "{{baseUrl}}/collections/{{rootId}}" }, "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('409 cycle rejected', () => pm.response.to.have.status(409));"] } }] },
+        { "name": "Rename child collection", "request": { "method": "PATCH", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\"name\":\"{{childName}} Renamed\"}" }, "url": "{{baseUrl}}/collections/{{childId}}" }, "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('200 collection renamed', () => { pm.response.to.have.status(200); pm.expect(pm.response.json().collection.name).to.include('Renamed'); });"] } }] },
+        { "name": "Delete collection tree", "request": { "method": "DELETE", "url": "{{baseUrl}}/collections/{{rootId}}" }, "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('204 parent deleted', () => pm.response.to.have.status(204));"] } }] },
+        { "name": "Verify child cascaded", "request": { "method": "DELETE", "url": "{{baseUrl}}/collections/{{childId}}" }, "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('404 child was cascaded', () => pm.response.to.have.status(404));"] } }] },
+        { "name": "Return missing collection", "request": { "method": "DELETE", "url": "{{baseUrl}}/collections/{{rootId}}" }, "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('404 already deleted', () => pm.response.to.have.status(404));"] } }] }
+      ]
+    },
+    {
+      "name": "Tags",
+      "item": [
+        { "name": "List all tags", "request": { "method": "GET", "url": "{{baseUrl}}/tags" }, "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('200 tags', () => { pm.response.to.have.status(200); pm.expect(pm.response.json().tags).to.be.an('array'); });"] } }] },
+        { "name": "Reject blank tag", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\"name\":\" \"}" }, "url": "{{baseUrl}}/tags" }, "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('400 blank tag', () => pm.response.to.have.status(400));"] } }] },
+        { "name": "Create tag", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\"name\":\"{{tagName}}\"}" }, "url": "{{baseUrl}}/tags" }, "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('201 tag created', () => { pm.response.to.have.status(201); pm.collectionVariables.set('tagId', pm.response.json().tag.tagId); });"] } }] },
+        { "name": "Reject duplicate tag", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\"name\":\"{{tagName}}\"}" }, "url": "{{baseUrl}}/tags" }, "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('409 duplicate tag', () => pm.response.to.have.status(409));"] } }] },
+        { "name": "Search tag by name", "request": { "method": "GET", "url": "{{baseUrl}}/tags?q={{tagName}}" }, "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('200 tag search', () => pm.response.to.have.status(200));"] } }] }
+      ]
+    }
+  ]
+}

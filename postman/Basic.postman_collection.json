@@ -1,0 +1,83 @@
+{
+  "info": {
+    "name": "Personal Digital Archive - Basic",
+    "description": "Happy-path smoke flow for the first backend checkpoint. Uses only localhost.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://127.0.0.1:3000/api" },
+    { "key": "itemId", "value": "" },
+    { "key": "collectionId", "value": "" },
+    { "key": "tagId", "value": "" },
+    { "key": "itemTitle", "value": "\"\"" },
+    { "key": "collectionName", "value": "" },
+    { "key": "tagName", "value": "" }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": { "type": "text/javascript", "exec": [
+        "const run = Date.now().toString();",
+        "pm.collectionVariables.set('collectionName', 'PDA Basic ' + run);",
+        "pm.collectionVariables.set('tagName', 'pda-basic-' + run);"
+      ] }
+    }
+  ],
+  "item": [
+    {
+      "name": "Browse items",
+      "request": { "method": "GET", "url": "{{baseUrl}}/items?limit=20&offset=0" },
+      "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+        "pm.test('200 and item list returned', () => { pm.response.to.have.status(200); const b = pm.response.json(); pm.expect(b.items).to.be.an('array'); pm.expect(b.total).to.be.a('number'); pm.collectionVariables.set('itemId', b.items.length ? b.items[0].itemId : ''); if (b.items.length) pm.collectionVariables.set('itemTitle', JSON.stringify(b.items[0].title)); });"
+      ] } }]
+    },
+    {
+      "name": "Create collection",
+      "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"name\": \"{{collectionName}}\"\n}" }, "url": "{{baseUrl}}/collections" },
+      "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+        "pm.test('201 collection created', () => { pm.response.to.have.status(201); const b = pm.response.json(); pm.expect(b.collection.name).to.eql(pm.collectionVariables.get('collectionName')); pm.collectionVariables.set('collectionId', b.collection.collectionId); });"
+      ] } }]
+    },
+    {
+      "name": "List collection tree",
+      "request": { "method": "GET", "url": "{{baseUrl}}/collections?tree=true" },
+      "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('200 and collection tree returned', () => { pm.response.to.have.status(200); pm.expect(pm.response.json().collections).to.be.an('array'); });"] } }]
+    },
+    {
+      "name": "Rename collection",
+      "request": { "method": "PATCH", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"name\": \"{{collectionName}} Updated\"\n}" }, "url": "{{baseUrl}}/collections/{{collectionId}}" },
+      "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('200 collection updated', () => { pm.response.to.have.status(200); pm.expect(pm.response.json().collection.name).to.include('Updated'); });"] } }]
+    },
+    {
+      "name": "Create tag",
+      "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"name\": \"{{tagName}}\"\n}" }, "url": "{{baseUrl}}/tags" },
+      "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('201 tag created', () => { pm.response.to.have.status(201); pm.collectionVariables.set('tagId', pm.response.json().tag.tagId); });"] } }]
+    },
+    {
+      "name": "List tags",
+      "request": { "method": "GET", "url": "{{baseUrl}}/tags?q={{tagName}}" },
+      "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('200 matching tag returned', () => { pm.response.to.have.status(200); pm.expect(pm.response.json().tags.some((tag) => tag.name === pm.collectionVariables.get('tagName'))).to.eql(true); });"] } }]
+    },
+    {
+      "name": "Read item and record access",
+      "request": { "method": "GET", "url": "{{baseUrl}}/items/{{itemId}}" },
+      "event": [
+        { "listen": "prerequest", "script": { "type": "text/javascript", "exec": ["if (!pm.collectionVariables.get('itemId')) pm.execution.skipRequest();"] } },
+        { "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('200 item details returned', () => { pm.response.to.have.status(200); pm.expect(pm.response.json().item.itemId).to.eql(Number(pm.collectionVariables.get('itemId'))); });"] } }
+      ]
+    },
+    {
+      "name": "Update item and memberships",
+      "request": { "method": "PATCH", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"title\": {{itemTitle}}\n}" }, "url": "{{baseUrl}}/items/{{itemId}}" },
+      "event": [
+        { "listen": "prerequest", "script": { "type": "text/javascript", "exec": ["if (!pm.collectionVariables.get('itemId')) pm.execution.skipRequest();"] } },
+        { "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('200 item updated', () => { pm.response.to.have.status(200); pm.expect(pm.response.json().item.title).to.eql(JSON.parse(pm.collectionVariables.get('itemTitle'))); });"] } }
+      ]
+    },
+    {
+      "name": "Delete temporary collection",
+      "request": { "method": "DELETE", "url": "{{baseUrl}}/collections/{{collectionId}}" },
+      "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('204 collection deleted', () => pm.response.to.have.status(204));"] } }]
+    }
+  ]
+}
