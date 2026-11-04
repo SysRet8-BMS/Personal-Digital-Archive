@@ -1,0 +1,16 @@
+services:
+  db:
+    image: pgvector/pgvector:pg18-trixie
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-personal_archive}
+      POSTGRES_USER: ${POSTGRES_USER:-archive}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-archive}
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - ./.data/postgres:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-archive} -d ${POSTGRES_DB:-personal_archive}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20

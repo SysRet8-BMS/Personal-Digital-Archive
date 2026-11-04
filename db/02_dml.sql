@@ -1,5 +1,6 @@
 -- =====================================================================
 -- Personal Digital Archive : DML  (each "-- ###" line starts a section)
+-- Course/demo script only. Includes destructive and role-denial examples; do not run as app setup.
 -- =====================================================================
 
 -- ### D1. INSERT - file formats (lookup data)
