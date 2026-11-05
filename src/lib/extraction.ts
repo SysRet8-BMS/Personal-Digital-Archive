@@ -14,7 +14,7 @@ export async function extractFile(filePath: string): Promise<ExtractionResult> {
   const extension = path.extname(filePath).toLowerCase();
   try {
     let text: string;
-    let method = "text";
+    let method = "text_layer";
     if ([".txt", ".md", ".csv"].includes(extension)) text = await readFile(filePath, "utf8");
     else if (extension === ".html" || extension === ".htm") {
       const $ = load(await readFile(filePath, "utf8"));
