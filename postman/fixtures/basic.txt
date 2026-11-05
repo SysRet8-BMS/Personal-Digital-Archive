@@ -1,0 +1,2 @@
+Personal Digital Archive exhaustive API test fixture.
+This local text file exercises extraction, keyword search, activity logs, item deletion, and audit history.
