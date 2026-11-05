@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "Personal Digital Archive - Basic",
-    "description": "Happy-path end-to-end API smoke flow using local fixtures and localhost only.",
+    "description": "Happy-path end-to-end API smoke flow using local fixtures and localhost only. Collection variable values are generated once per run.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -40,7 +40,7 @@
       "script": {
         "type": "text/javascript",
         "exec": [
-          "const run = Date.now().toString();",
+          "const run = pm.collectionVariables.get('runId') || Date.now().toString();\npm.collectionVariables.set('runId', run);",
           "pm.collectionVariables.set('collectionName', 'PDA Basic ' + run);",
           "pm.collectionVariables.set('tagName', 'pda-basic-' + run);"
         ]

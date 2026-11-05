@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "Personal Digital Archive - Exhaustive",
-    "description": "Full API coverage: ingest, browse, edit, collections/tags, file retrieval, delete, search, activity, reports, settings, and root scan. Run with the app pointed at an isolated test archive root.",
+    "description": "Full API coverage: ingest, browse, edit, collections/tags, file retrieval, delete, search, activity, reports, settings, and root scan. Run with the app pointed at an isolated test archive root. Collection variable values are generated once per run.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -52,7 +52,7 @@
       "script": {
         "type": "text/javascript",
         "exec": [
-          "const run = Date.now().toString();",
+          "const run = pm.collectionVariables.get('runId') || Date.now().toString();\npm.collectionVariables.set('runId', run);",
           "pm.collectionVariables.set('rootName', 'PDA Exhaustive Root ' + run);",
           "pm.collectionVariables.set('childName', 'PDA Exhaustive Child ' + run);",
           "pm.collectionVariables.set('tagName', 'pda-exhaustive-' + run);"
