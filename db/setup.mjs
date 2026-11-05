@@ -27,6 +27,7 @@ try {
       await client.query(await readFile(join(root, "seed.sql"), "utf8"));
       await client.query("INSERT INTO schema_migrations (name) VALUES ('snapshot-v1')");
       await client.query("INSERT INTO schema_migrations (name) VALUES ('0001_prevent_collection_cycles.sql')");
+      await client.query("INSERT INTO schema_migrations (name) VALUES ('0002_recent_audit_events.sql')");
       await client.query("COMMIT");
       console.log("Initialized database from the canonical DDL snapshot and lookup seed.");
     } catch (error) {

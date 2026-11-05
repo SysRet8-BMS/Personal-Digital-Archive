@@ -197,6 +197,12 @@ CREATE TABLE audit_log (
     CONSTRAINT ck_audit_action CHECK (action IN ('DELETE'))
 );
 
+CREATE OR REPLACE VIEW recent_audit_events AS
+SELECT audit_id, item_id, item_title, action, action_at
+FROM audit_log
+ORDER BY action_at DESC
+LIMIT 100;
+
 -- ---------------------------------------------------------------------
 -- 9. INDEXES
 -- ---------------------------------------------------------------------
@@ -375,6 +381,7 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON
     file_format, file_format_extension, collection, tag, item, item_collection, item_tag,
     chunk, embedding, access_log, search_log, search_log_tag TO archive_app;
 GRANT SELECT ON item_summary, recent_items, stats_collection, stats_tag, stats_format TO archive_app;
+GRANT SELECT ON recent_audit_events TO archive_app;
 GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO archive_app;
 GRANT EXECUTE ON PROCEDURE add_item(VARCHAR,TEXT,VARCHAR,VARCHAR,VARCHAR,VARCHAR,TIMESTAMPTZ,TEXT[],INT) TO archive_app;
 GRANT EXECUTE ON FUNCTION  search_items(TEXT,INT,INT,INT,DATE,DATE) TO archive_app;
