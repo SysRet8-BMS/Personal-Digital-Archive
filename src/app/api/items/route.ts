@@ -1,9 +1,34 @@
 import { NextRequest, NextResponse } from "next/server";
-import { ApiError, jsonError, parseBooleanParam, parseDateParam } from "@/lib/api";
+import { ApiError, jsonError, parseBooleanParam, parseDateParam, parseIdList } from "@/lib/api";
 import { query } from "@/lib/db";
+import { ingestFile, ingestUpload } from "@/lib/ingest";
+import { recordBody, stringField } from "@/lib/validation";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+
+export async function POST(request: NextRequest) {
+  try {
+    const contentType = request.headers.get("content-type") ?? "";
+    let result;
+    if (contentType.includes("multipart/form-data")) {
+      const form = await request.formData();
+      const file = form.get("file");
+      if (!(file instanceof File)) throw new ApiError(400, "VALIDATION_ERROR", "A file field is required.");
+      result = await ingestUpload(file, {
+        title: form.get("title")?.toString() || undefined, description: form.get("description")?.toString() || null,
+        source: form.get("source")?.toString() || null,
+      });
+    } else {
+      const body = recordBody(await request.json());
+      for (const key of Object.keys(body)) if (!["sourcePath", "title", "description", "source", "deleteOriginal", "collectionIds", "tagIds"].includes(key)) throw new ApiError(400, "VALIDATION_ERROR", `Unknown field: ${key}.`);
+      const sourcePath = stringField(body, "sourcePath", { required: true, max: 4096 })!;
+      const deleteOriginal = body.deleteOriginal === true;
+      result = await ingestFile(sourcePath, { title: stringField(body, "title", { max: 255 }) ?? undefined, description: stringField(body, "description", { nullable: true }), source: stringField(body, "source", { nullable: true, max: 255 }), deleteOriginal, collectionIds: parseIdList(body.collectionIds,"collectionIds"), tagIds: parseIdList(body.tagIds,"tagIds") });
+    }
+    return NextResponse.json(result, { status: 201 });
+  } catch (error) { return jsonError(error); }
+}
 
 export async function GET(request: NextRequest) {
   try {

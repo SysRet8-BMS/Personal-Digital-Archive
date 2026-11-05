@@ -2,6 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { ApiError, jsonError, parseId, parseIdList } from "@/lib/api";
 import { inTransaction } from "@/lib/db";
 import { booleanField, dateField, recordBody, stringField, ValidationError } from "@/lib/validation";
+import { query } from "@/lib/db";
+import { rename, rm } from "node:fs/promises";
+import path from "node:path";
+import { randomUUID } from "node:crypto";
+import { resolveFileInsideRoot } from "@/lib/archive-root";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -110,6 +115,32 @@ export async function PATCH(request: NextRequest, context: Context) {
   } catch (error) {
     return jsonError(error);
   }
+}
+
+export async function DELETE(_request: NextRequest, context: Context) {
+  try {
+    const id = parseId((await context.params).id);
+    let movedFrom: string | undefined;
+    let movedTo: string | undefined;
+    try {
+      await inTransaction(async (client) => {
+        const found = await client.query<{file_dir:string;file_name:string}>("SELECT file_dir,file_name FROM item WHERE item_id=$1 FOR UPDATE",[id]);
+        if (!found.rowCount) throw new ApiError(404, "NOT_FOUND", "Item not found.");
+        try {
+          const resolved = await resolveFileInsideRoot(path.join(found.rows[0].file_dir,found.rows[0].file_name));
+          movedFrom = resolved.filePath;
+          movedTo = path.join(path.dirname(movedFrom),`.pda-delete-${randomUUID()}`);
+          await rename(movedFrom,movedTo);
+        } catch (error) { if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error; }
+        await client.query("DELETE FROM item WHERE item_id=$1",[id]);
+      });
+    } catch (error) {
+      if (movedFrom && movedTo) await rename(movedTo,movedFrom).catch(()=>undefined);
+      throw error;
+    }
+    if (movedTo) await rm(movedTo,{force:true}).catch((error)=>console.error("Deleted file cleanup failed",error));
+    return new NextResponse(null, { status: 204 });
+  } catch (error) { return jsonError(error); }
 }
 
 async function assertReferencesExist(client: import("pg").PoolClient, table: "collection" | "tag", key: "collection_id" | "tag_id", ids: number[]) {

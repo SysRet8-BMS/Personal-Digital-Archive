@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { ValidationError } from "./validation";
+import { ArchiveRootError } from "./archive-root";
 
 export class ApiError extends Error {
   constructor(public status: number, public code: string, message: string) {
@@ -13,6 +14,9 @@ export function jsonError(error: unknown): NextResponse {
   }
   if (error instanceof ValidationError) {
     return NextResponse.json({ error: { code: "VALIDATION_ERROR", message: error.message } }, { status: 400 });
+  }
+  if (error instanceof ArchiveRootError) {
+    return NextResponse.json({ error: { code: "INVALID_ARCHIVE_PATH", message: error.message } }, { status: 400 });
   }
   if (error instanceof SyntaxError) {
     return NextResponse.json({ error: { code: "INVALID_JSON", message: "Request body must contain valid JSON." } }, { status: 400 });
