@@ -14,4 +14,4 @@ Development PostgreSQL data is bind-mounted to the host. Archive file bytes stay
 
 ## Current schema change
 
-The collection hierarchy now has a database trigger that rejects moves creating ancestor cycles. The API also checks references and maps the database constraint to a conflict response. The same trigger appears in the canonical snapshot and migration `0001_prevent_collection_cycles.sql`.
+The collection hierarchy has a database trigger that rejects moves creating ancestor cycles. Migration `0002_recent_audit_events.sql` adds a restricted activity view for showing item deletions without granting the app direct access to the audit table. Both changes are reflected in the canonical snapshot and migration history.

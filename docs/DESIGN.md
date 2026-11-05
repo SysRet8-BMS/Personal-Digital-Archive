@@ -45,7 +45,7 @@ Keep DB credentials and filesystem operations in server-only modules. Use parame
 | --- | --- |
 | `/` | Recent items, favorites, and processing status |
 | `/items` | Browse, sort, and filter items |
-| `/items/new` | Add/upload or index files under the selected root |
+| `/import` | Add/upload or index files under the selected root |
 | `/items/{id}` | Metadata, tags, collections, status, file access, edit/delete |
 | `/search` | Keyword, semantic, and hybrid search |
 | `/collections` | Nested collection tree and contents |
@@ -59,33 +59,30 @@ The initial layout is desktop-first and compact: navigation, search, filter cont
 
 Base path: `/api`. JSON except file responses. IDs are SQL identifiers. Standard error shape: `{ "error": { "code": string, "message": string } }`.
 
-### Initial backend checkpoint
+### Backend API contract
 
 | Method and path | Request | Response | Behavior |
 | --- | --- | --- | --- |
-| `GET /items` | `q?`, `formatId?`, `tagId?`, `collectionId?`, `dateFrom?`, `dateTo?`, `favorite?`, `archived?`, `limit?`, `offset?` | `{items, total}` | Browse/filter items; no semantic or keyword search in this checkpoint |
+| `GET /items` | `q?`, `formatId?`, `tagId?`, `collectionId?`, `dateFrom?`, `dateTo?`, `favorite?`, `archived?`, `limit?`, `offset?` | `{items, total}` | Browse and filter items |
+| `POST /items` | multipart upload or `{sourcePath, deleteOriginal?, ...}` | `201 {itemId, extractionStatus}` | Import into selected root, extract, chunk, and atomically ingest |
 | `GET /items/{id}` | — | `{item, chunks?, collections, tags}` | Read item and record access |
 | `PATCH /items/{id}` | Editable metadata, favorite/archive values, `collectionIds?`, `tagIds?` | `{item}` | Update metadata and complete collection/tag memberships |
+| `DELETE /items/{id}` | — | `204` | Delete archived file and item data; SQL records the audit entry |
+| `GET /items/{id}/file` | — | File stream | Serve only a file proven to be under selected root |
 | `GET /collections` | `tree?` | `{collections}` | Return nested collection data |
 | `POST /collections` | `{name, parentId?}` | `201 {collection}` | Create collection |
 | `PATCH /collections/{id}` | `{name?, parentId?}` | `{collection}` | Rename or move; reject cycles |
 | `DELETE /collections/{id}` | — | `204` | Delete; SQL cascades item memberships and child collections |
 | `GET /tags` | `q?` | `{tags}` | List tags and usage counts |
 | `POST /tags` | `{name}` | `201 {tag}` | Create a free-form tag |
-
-### Later backend APIs
-
-| Method and path | Purpose |
-| --- | --- |
-| `POST /items` | Add/upload or import a file, extracting and chunking atomically |
-| `DELETE /items/{id}` | Delete item; retain trigger audit and SQL cascades |
-| `POST /search` | Keyword, semantic, or hybrid search; append search history |
-| `GET /activity/recent` | Recently accessed items |
-| `GET /activity/searches` | Search history |
-| `GET /reports/{name}` | Allowlisted FR17 reports and FR18 statistics |
-| `GET /items/{id}/file` | Stream only a file inside the selected root |
-| `POST /scan` | Start a local scan of the selected root |
-| `GET /scan/{scanId}` | Read local scan progress |
+| `DELETE /tags/{id}` | — | `204` | Delete tag and its item memberships |
+| `POST /search` | `{type, query?, formatId?, tagId?, collectionId?, dateFrom?, dateTo?, favorite?, archived?, limit?}` | `{items, total, type, searchId}` | Filter, keyword, semantic, or hybrid search; record filters and result count |
+| `GET /activity/recent` | — | `{events}` | Recent access, search, and deletion events |
+| `GET /activity/searches` | `limit?`, `offset?` | `{searches}` | Search history and filters |
+| `GET /reports/{name}` | Report-specific parameters | `{data}` | Recursive collections, recent access, popular/unused tags, untagged items, above-average access, collection comparison, and statistics |
+| `GET /settings` | — | `{archiveRoot, embeddingModel, modelAvailable}` | Report the selected local root and whether local model assets are available |
+| `POST /scan` | `{}` | `202 {scanId}` | Scan only the selected root asynchronously |
+| `GET /scan/{scanId}` | — | `{status, discovered, indexed, failed}` | Read scan progress |
 
 ## Backend behavior
 
@@ -93,8 +90,8 @@ Base path: `/api`. JSON except file responses. IDs are SQL identifiers. Standard
 - Detail reads append to `access_log`. PATCH updates only provided item fields; supplied collection/tag ID arrays replace the corresponding memberships in one transaction.
 - Collection moves must reject self-parenting and descendant cycles before update. SQL's own-parent check alone does not prevent longer cycles.
 - Collection/tag create operations normalize and validate names, translate SQL unique/check violations to 409/400, and return the created row.
-- Keyword/filter search later calls `search_items` where its date semantics fit. Semantic and hybrid search query pgvector and join `chunk` to `item`; embedding query vectors must use the configured model and dimension.
-- Imports later index files only beneath the selected root. For external files, copy to a collision-safe destination under the root, confirm before deleting the original, and default deletion to false.
+- Keyword/filter search calls `search_items`. Semantic and hybrid search query pgvector and join `chunk` to `item`; hybrid results include keyword matches whose embeddings are still pending.
+- Imports index only beneath the selected root. External files are copied into a collision-safe destination under the root. Deleting the original is an explicit opt-in and defaults to false.
 
 ## Local extraction choice
 
@@ -104,7 +101,7 @@ Use JavaScript/TypeScript tooling compatible with Next.js rather than a remote s
 - Tesseract.js performs OCR on images and rendered scanned PDF pages. Bundle its worker, WASM core, and selected language data locally; do not fetch them from a CDN or download them at runtime.
 - Use small local parsers for DOCX/PPTX/XLSX/CSV/HTML/TXT/MD. Keep format parsers behind an extraction adapter so each can be replaced independently.
 
-This is text extraction/OCR, not image captioning or visual semantic understanding. No vision model is required by the current SRS. OCR/model assets should be limited to selected languages and installed ahead of offline use. Extraction implementation is deferred past the current API checkpoint.
+This is text extraction/OCR, not image captioning or visual semantic understanding. No vision model is required by the current SRS. English OCR and 384-dimensional embedding assets are bundled locally; runtime downloads are disabled.
 
 ## Database files and migrations
 
@@ -121,6 +118,6 @@ This is text extraction/OCR, not image captioning or visual semantic understandi
 - Current DDL has `archive_app` broad DML on many tables. Restrict API query paths to intended operations; revisit grants if runtime SQL is moved to a narrower app role.
 - `search_items` filters by `added_at`, while an example report filters `created_at`; finalize date semantics when search is implemented.
 
-## Checkpoint boundary
+## Completion boundary
 
-The first implementation ends after the nine initial API operations in the table above, database setup/migration foundations, and Basic/Exhaustive Postman collections. Ingest, file lifecycle, search, workers, activity, reports, frontend pages, and semantic embeddings remain for the next contributor.
+The frontend and backend cover the SRS flows. Run both Postman collections against the local app/database before final delivery. The embedding worker runs as a separate local process.

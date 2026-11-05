@@ -12,7 +12,7 @@ Build the SRS Personal Digital Archive as a local, single-user Next.js applicati
 - Atomic item-and-chunk ingest, post-commit embedding work, safe worker claiming, and delete auditing.
 - No application login, sharing, synchronization, cloud deployment, or multi-user features.
 
-## Proposed implementation sequence
+## Implementation sequence
 
 ### 1. Repository and runtime foundation
 
@@ -74,10 +74,19 @@ Build the SRS Personal Digital Archive as a local, single-user Next.js applicati
 - Use local Next.js-compatible extraction tools. The design recommends PDF.js, Tesseract.js, and local format parsers, with all OCR assets bundled before offline use.
 - Bind the application and development database to loopback. Do not use hosted services, telemetry, CDNs, or runtime external requests.
 
-## First implementation checkpoint
+## Complete implementation sequence
 
-Implement the local runtime/database foundation and the first logical backend group: item list/detail/update, collection list/create/update/delete, and tag list/create. Stop after these nine API operations and their Postman collections. Leave ingest, search, activity, reports, scans, and UI pages for the next contributor.
+1. Finish item import, root configuration, scan and processing jobs, deletion, and controlled file serving.
+2. Finish local extraction, chunking, 384-dimensional embedding generation, worker locking/status, and keyword/semantic/hybrid search.
+3. Finish access/search history and all FR17/FR18 report and view endpoints.
+4. Build the complete Next.js UI for browse, item detail/edit, import/scan, search, collections/tags, activity, and reports.
+5. Run the Basic and Exhaustive Postman collections against the local PostgreSQL instance; cover all success and failure cases and fix failures before the final commits.
+6. Update README, AGENTS, and docs as behavior settles. Keep the approved scope aligned with the SQL snapshots and SRS.
 
-## Checkpoint status
+## Expanded scope status
 
-The plan and design have been approved. The first backend checkpoint implements item list/detail/update, collection list/create/update/delete, and tag list/create, with Postman Basic and Exhaustive collections. Stop after this checkpoint so the next contributor can take the remaining APIs and UI.
+The user approved completing the full application and asked for new commits to include Bhuvan M S and C K Gagan Gowda as co-authors.
+
+## Implemented scope
+
+Core APIs now include item browsing, detail, update, import, deletion and file serving; collection and tag management; keyword, semantic and hybrid search; activity and report endpoints; settings; and on-demand root scans. Local extraction covers text, Markdown, PDF, DOCX, PPTX, XLSX, CSV, HTML, PNG and JPEG. The Next.js interface includes browse, detail, import, search, collection/tag, activity, reports and settings views. Run the embedding worker separately for semantic indexing. Validate the full behavior with the two local Postman collections.

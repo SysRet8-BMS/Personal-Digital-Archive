@@ -5,7 +5,7 @@
 - Local-only, single-user personal archive. No application login, cloud services, telemetry, or external runtime requests.
 - Next.js server routes own PostgreSQL access and local filesystem access. Keep secrets and path handling server-side.
 - PostgreSQL is the source of truth. pgvector is enabled in the database; there is no separate vector store.
-- Read `SRS_Personal_Digital_Archive.pdf`, `Personal_Digital_Archive_Report.pdf`, and `CODEX.md` for requirements and workflow. The SQL snapshots are authoritative for database behavior.
+- Read `deliverables/SRS_Personal_Digital_Archive.pdf`, `deliverables/Personal_Digital_Archive_Report.pdf`, and `CODEX.md` for requirements and workflow. The SQL snapshots are authoritative for database behavior.
 
 ## General guidelines:
 
@@ -24,6 +24,7 @@
 - Commit `README.md`, `AGENTS.md`, and every Markdown file in `docs/`; use uppercase names for files in `docs/`. Keep other Markdown files untracked, including root-level `CODEX.md` and `MY_NOTES.md`.
 - The user has also directed that `SRS_Personal_Digital_Archive.pdf` be committed.
 - Before committing, stage paths explicitly. Do not use a blanket `git add -A` because repository guidance and reference files must remain untracked.
+- For every new commit, use the configured user as author and add `Co-authored-by: C K Gagan Gowda <ckgagangowda47@gmail.com>`.
 
 ## Local setup
 
@@ -38,11 +39,11 @@
 - Never index outside the selected root. Resolve real paths to block traversal and symlink escapes. Files already inside are referenced in place. Importing from outside copies into the root and asks before deleting the original; default is no.
 - Do not perform a home-wide scan by default. No watcher/background crawl until explicitly designed.
 - The SQL `collection` table uses cascading parent deletion, so deleting a collection also removes nested collections and their memberships. API updates must reject hierarchy cycles; the DB trigger also enforces this.
-- `item_summary` and `search_items` have the behavior in the DDL; `search_items` is keyword/filter only. Semantic search is a separate future pgvector query.
+- `item_summary`, `search_items`, and the statistics views have the behavior in the DDL. The API uses `search_items` for keyword/filter results and pgvector for semantic/hybrid results.
 - `add_item` does not accept collection/tag relationships. Preserve atomic ingest by adding them inside the same encompassing transaction or revising the procedure.
 - Keep the DDL and migration history aligned. Canonical snapshots are not migrations and include destructive table drops, so run them only on an empty fresh database.
-- Do not use cloud OCR, remote model APIs, CDNs, hosted fonts, or telemetry. Bundle any future extraction workers, OCR engines, language files, and model assets locally.
+- Do not use cloud OCR, remote model APIs, CDNs, hosted fonts, or telemetry. Extraction libraries, English OCR data, and the 384-dimensional MiniLM model are bundled locally.
 
 ## Current implementation boundary
 
-Implemented backend checkpoint: item list/detail/PATCH, collection GET/POST/PATCH/DELETE, tag GET/POST. Postman `Basic` covers happy paths; `Exhaustive` covers common validation, conflict, missing record, cycle, and cascade cases. Do not infer that ingest/search/UI work is already present.
+The SRS API and UI surface is implemented. `npm run worker` runs the local embedding worker separately. Keep the Basic and Exhaustive Postman collections current and run both against the local PostgreSQL-backed app before final commits; use a disposable `ARCHIVE_ROOT` for tests that start a scan.

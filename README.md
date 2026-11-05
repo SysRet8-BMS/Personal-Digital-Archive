@@ -15,10 +15,14 @@ The default index root resolves to `Downloads` under the current operating-syste
 
 During development, PostgreSQL data is persisted in a local host directory and files are read from the host filesystem. No file binaries are stored in the database container. Setup may need image/package downloads once; the running application itself makes no external network calls. The Next.js commands disable telemetry and bind the app to loopback. Import the local Postman collections in `postman/` to exercise the implemented APIs.
 
-## Current status
+## Features
 
-The first backend checkpoint covers item browsing, detail, metadata/membership updates, collections, and tags. Ingest/extraction, search, embeddings, reports, activity history, scanning, and frontend pages remain future work.
+Browse and organize files, import from disk, extract text from common office and web formats, OCR images and scanned PDFs, and search with keyword, semantic, or hybrid ranking. The local embedding model uses PostgreSQL pgvector. Collections, tags, activity history, archive reports, and an on-demand scan are available in the interface.
+
+Run `npm run worker` in a second terminal to generate embeddings for pending chunks. The model and English OCR data are included in the local installation; the app does not download them at runtime. To use a separate model directory, set `PDA_MODELS_DIR` before starting the app.
+
+The `Basic` and `Exhaustive` Postman collections cover the API. The Exhaustive collection includes an isolated local text fixture and exercises the complete API surface. Point `ARCHIVE_ROOT` at a disposable directory before running it because its scan case processes the selected root.
 
 ## Project guidance
 
-See `CODEX.md` for contribution workflow and `AGENTS.md` for repository context. Architecture decisions and implementation notes are in `docs/`.
+See `AGENTS.md` for repository context and contributor workflow. Architecture decisions and implementation notes are in `docs/`.

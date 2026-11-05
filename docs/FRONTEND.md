@@ -1,12 +1,11 @@
 # Frontend Notes
 
-The initial implementation checkpoint is API-only. Build the Next.js pages after the corresponding API flows are available. Keep browser assets local and never call a hosted service. The first pages should consume item list/detail/update, collection, and tag APIs; later pages can add ingest, search, activity, and reports.
+The local Next.js interface provides item browsing and detail, import and root scanning, search, collection/tag management, activity, reports, and local settings. Keep browser assets local and never call a hosted service.
 
 Recommended first UI sequence:
 
-1. Browse items with pagination and metadata filters.
-2. Item detail with favorite/archive, editable metadata, and collection/tag assignment.
-3. Collection tree and tag views.
-4. Add/import and processing statuses after the ingest APIs are complete.
+1. Browse items and inspect item detail, extraction status, and available content.
+2. Import files or scan the selected root; a path import can copy an external file into the archive.
+3. Use search, collections, tags, activity, reports, and settings from the navigation.
 
-Use server components for initial reads where useful and local API routes for mutations. Keep all path checks and filesystem access on the server; never accept a browser-provided path as trusted.
+Use server components for initial reads where useful and local API routes for mutations. Keep all path checks and filesystem access on the server; never accept a browser-provided path as trusted. Archive scans are explicit and limited to the selected root.
